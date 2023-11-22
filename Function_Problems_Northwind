@@ -1,0 +1,39 @@
+--NORTHWIND MySQL Calculations-Functions Problems
+
+--Use the abbreviated MySQL Northwind database at https://www.w3schools.com/mysql/.
+
+--1. Display product name, regular price, and a calculated field labeled “Discount Price” that is 10% lower than the regular price.
+
+SELECT productname, price, round((price*.9),2) as "Discount Price" FROM Products;
+
+--2. From the Orders table, display the unique shipper ID and a count of the orders they’ll ship.
+
+SELECT distinct(shipperID), count(shipperID) FROM Orders
+group by shipperID;
+
+--3. Modify the previous query to add the Shipper Name from the Shippers table.
+
+SELECT distinct(o.shipperID), s.shippername, count(o.shipperID) 
+FROM Orders o, Shippers s
+where s.shipperid = o.shipperid
+group by o.shipperID, s.shippername
+
+--4. List the Order ID, order date, and a calculated field 2 weeks after the order date labeled “Est. Arrival”. 
+
+SELECT o.orderid, o.orderdate, date_add(o.orderdate, interval 2 week) as "Est. Arrival"
+FROM Orders o;
+
+--5. List each employee using the format “First Last” and the number of orders they’re responsible for.
+
+SELECT concat(e.firstname, e.lastname) as "First Last", o.employeeid, count(o.employeeid) 
+FROM Orders o, Employees e
+where o.employeeid = e.employeeid
+group by concat(e.firstname, e.lastname), o.employeeid;
+
+--6. Modify the previous query to only display employees with more than 100 orders.
+
+SELECT concat(e.firstname, e.lastname) as "First Last", o.employeeid, count(o.employeeid) 
+FROM Orders o, Employees e
+where o.employeeid = e.employeeid
+group by concat(e.firstname, e.lastname), o.employeeid
+having count(o.employeeid) > 100;
