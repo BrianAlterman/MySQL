@@ -1,0 +1,114 @@
+--Single Row and Group Functions Problems
+
+--Write a script that performs the following queries (using the Northwoods database).  Note than any field in quotes should be named such.
+
+--1. Display student last name, pin number (the old one), and a corrected pin (due to a computer glitch, you must subtract 15 from each pin number).  Call the new field “New Pin”.  Sort by last name.
+
+select s_last as "Last Name", 
+       s_pin as "PIN Original", 
+       s_pin - 15 as "New Pin"
+from student
+order by s_last asc;
+
+--2. Display course name, term_id, credits, and “Rev Credits” (a new field that converts the credits of the old semester system to the new quarter system; this field is calculated by multiplying the credits by 1.33).  Sort by course name.
+
+Select c.course_name, 
+       cs.term_id, 
+       c.credits, 
+       c.credits * 1.33 as "Rev Credits"
+from course c, course_section cs
+order by course_name;
+
+--3.  Display location_id, capacity, and “Location” (a field that concatenates the building code and the room number), for those “locations” that have a capacity greater than 5 (in other words, it isn’t an office).
+
+select loc_id, capacity, bldg_code, concat(bldg_code,"-",room)
+from location
+where capacity > 5;
+
+--4. Display student last name, city (but have the city appear in all upper case letters), and all their grades (for all grades that are not null).  Sort by last name from Z to A.  HINT: You’ll need to join the student and enrollment table on s_id.
+
+select s.s_last, upper(s.s_city), e.grade
+from student s, enrollment e
+where e.s_id = s.s_id
+and e.grade is not null
+order by s.s_last desc;
+
+--5. Display course_name, building code (the old one), and “New Location”, a field that changes the name of the business building to CSC (and keeps the other buildings the same name).
+
+select c.course_name, l.bldg_code,
+case
+when l.bldg_code = "BUS" then 'CSC'
+else l.bldg_code
+end as 'New Location'
+from course c, course_section cs, location l
+where c.course_id = cs.course_id
+and cs.loc_id = l.loc_id;
+
+--6. Display building code/room (joined together and called “Place”) and “New Capacity”, which is a calculated field that raises the capacity by a power (this is an exponent) of 4/5, which is a suggested cost saving move.  Only locations with a capacity greater than 3 should be displayed.  Ensure that the resulting capacity has exactly 3 decimal places (even though capacity maybe shouldn’t have decimals!).
+
+select concat(l.bldg_code,l.room) as "Place",
+round(power(capacity,4/5),3) as "New Capaity"
+from  location l;
+
+--7.  Display student last name, date of birth, and “Consent”, a calculated field that adds exactly 18 years to a student’s birthdate (and indicates when they turn 18.  HINT: use the DATE_ADD function).  Perform this only for Daniel Black.
+
+select  s.s_last, s.s_dob, date_add(s.s_dob, interval 18 year) as "Consent"
+from student s
+where s.s_last = 'Black' 
+and s.s_first = 'Daniel';
+
+--8.  Display the smallest (lowest) faculty pin number.
+
+select  min(f_pin)
+from faculty;
+
+--9.  Display the number of records in the course_section table.
+
+Select count(*)
+From course_section
+
+--10.  Display the number of records in the s_class field.
+
+Select count(s_class)
+From student
+
+--11.  Display the day(s) a course is taught and a sum of all the maximum enrollments.  Group by the day the course is taught.
+
+select cs.c_sec_day, sum(cs.max_enrl)
+from course_section cs
+group by cs.c_sec_day;
+
+--V2 
+
+select 'Monday', sum(cs.max_enrl)
+from course_section cs
+where c_sec_day like '%M%'
+union
+select 'Tuesday', sum(cs.max_enrl)
+from course_section cs
+where c_sec_day like '%T%'
+union
+select 'Wednesday', sum(cs.max_enrl)
+from course_section cs
+where c_sec_day like '%W%'
+union
+select 'Thursday', sum(cs.max_enrl)
+from course_section cs
+where c_sec_day like '%R%'
+union
+select 'Friday', sum(cs.max_enrl)
+from course_section cs
+where c_sec_day like '%F%';
+
+--12.  Display building code and maximum, minimum, and average capacities for all rooms.  Group by building code.
+
+select l.bldg_code, max(capacity), min(capacity), avg(capacity)
+from location l
+group by l.bldg_code;
+
+--13.  Display building code and room (concatenated and called “Classroom”), the maximum, minimum, and average capacities for all rooms with a capacity over 30.  Group by Classroom.  HINT: You’ll GROUP BY Classroom but you’ll need a HAVING clause afterward.
+
+select concat(l.bldg_code,room) as "Classroom", max(capacity), min(capacity), avg(capacity)
+from location l
+group by concat(l.bldg_code,room)
+having avg(capacity) > 30;
