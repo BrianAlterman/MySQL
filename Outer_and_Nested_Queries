@@ -1,0 +1,190 @@
+-- Using the Northwoods database, complete the following
+
+-- Outer/Self Joins:
+
+/*1. Write an INNER join for the following query.  Display faculty last name and first name 
+(format: Downey James) and called “Faculty” and the student last and first name (format: Bell, 
+John  note: this is a different format!) of all the students they advise, called “Student”. */
+
+select concat(f.f_last,' ',f.f_first) as "Faculty",
+       concat(s.s_last,',',s.s_first) as "Student"
+from faculty f inner join student s
+on f.f_id = s.f_id;
+
+/* 2. Modify the previous query to be a LEFT OUTER JOIN.  What is different about the result? */
+
+-- after I modified is query to be a left outer join there were 3
+-- additional rows with no student data (null)
+select concat(f.f_last,' ',f.f_first) as "Faculty",
+       concat(s.s_last,',',s.s_first) as "Student"
+from faculty f left outer join student s
+on f.f_id = s.f_id;
+
+/* 3. Modify the initial INNER JOIN query to be a RIGHT OUTER JOIN.  What is different about the result? */
+
+-- after I modified is query to be a right outer join there were 2
+-- additional rows with no faculty data (null)
+select concat(f.f_last,' ',f.f_first) as "Faculty",
+       concat(s.s_last,',',s.s_first) as "Student"
+from faculty f right outer join student s
+on f.f_id = s.f_id;
+
+/* 4. Combine the LEFT and RIGHT OUTER JOIN queries using the UNION operator (just like 
+we did in class).  What is the result? */
+
+-- returns all the matches plus the outer matches
+-- nulls in student and nulls in faculty
+-- not sure why here are no duplicate rows where
+-- there is data in both fields? Feels like I 
+-- would need a distinct for that to occur
+select concat(f.f_last,' ',f.f_first) as "Faculty",
+       concat(s.s_last,',',s.s_first) as "Student"
+from faculty f left outer join student s
+on f.f_id = s.f_id
+union
+select concat(f.f_last,' ',f.f_first) as "Faculty",
+       concat(s.s_last,',',s.s_first) as "Student"
+from faculty f right outer join student s
+on f.f_id = s.f_id;
+
+/* 5. Write a query that displays each course and its prerequisite (call_id).  Display call_id of the 
+course (called “Course”) and the call_id of the prerequisite (“Prereq”).  The course should be 
+first, and on the right should be the prerequisite. This will be like the “self join” we did in class 
+looking at faculty members and their chairperson (copy and paste the query from PowerPoint and 
+modify it, if that helps). */
+
+-- You can also do as a left join but that seems more complicated
+SELECT c.call_id as "Course", 
+       p.call_id "Prereq"
+FROM course c, course p
+WHERE p.course_id = c.prerequisite;
+
+-- Nested Queries (use nested queries for each of these):
+
+/* 1.  List the building code and room number of all locations that have the same capacity as CR 103. */
+
+-- There are two ways I found to do this one:
+SELECT l.bldg_code as "Building Code", 
+       l.room as "Room"
+FROM location l
+WHERE l.capacity = (SELECT capacity
+                    FROM location l1
+                    WHERE  l1.bldg_code = 'CR'
+                    AND l1.room = '103');
+
+-- or you can do as follows:
+SELECT l.bldg_code as "Building Code", 
+       l.room as "Room"
+FROM location l, 
+     (SELECT l1.capacity as "CAPMAT"
+      FROM location l1
+      WHERE l1.bldg_code = 'CR'
+      AND l1.room = '103') a -- alias not needed in OracleSQL
+where l.capacity = a.CAPMAT
+
+/* 2.  Display course name, credits, first and last names of all faculty members who teach a course 
+with the same number of credit hours as MIS 441 (this is the call_id). HINT: You’ll have two 
+table joins and one brief subquery in your WHERE clause. */
+
+SELECT c.course_name,
+       c.credits, 
+       f.f_last, 
+       f.f_first
+FROM course c,
+     course_section cs ,
+     faculty f
+WHERE c.course_id = cs.course_id
+AND   cs.f_id = f.f_id
+AND   c.credits = (SELECT c2.credits
+                   FROM course c2
+                   WHERE c2.call_id = 'MIS 441');
+
+-- or you can do as follows:
+SELECT c.course_name, 
+       c.credits, 
+       f.f_last, 
+       f.f_first
+FROM course c,
+     course_section cs ,
+     faculty f,
+     (SELECT c2.credits 
+      FROM course c2
+      WHERE c2.call_id = 'MIS 441') as cm
+WHERE c.course_id = cs.course_id
+AND   cs.f_id = f.f_id
+AND   c.credits = cm.credits
+
+/* 3.  Display first and last name, date of birth, and grades for all students who were born prior 
+to student Ruben Sanchez.  Display student grades only once. */
+
+SELECT DISTINCT
+    s.s_last,
+    s.s_first,
+    s.s_dob,
+    e.grade
+FROM
+    enrollment e,
+    student s
+WHERE e.s_id = s.s_id
+AND e.grade IS NOT NULL
+-- It wasn't clear if you wanted nulls here so I masked them out, above line can be deleted if required
+AND s.s_dob < (SELECT s2.s_dob
+               FROM student s2
+               WHERE s2.s_last = 'Sanchez'
+               AND s2.s_first = 'Ruben');
+
+/* 4.  Display term description, day of the class (c_sec_day), and the first and last name of those 
+instructors who teach on Monday and who taught in the same term as John Blanchard.  HINT: 
+This can be done with either one or two subqueries. */
+
+-- Returns multiple rows where faculty member teaches multiple sections
+-- Could use distinct to remove
+SELECT
+    t.term_desc as "Term", 
+    cs.c_sec_day as "Days",
+    f.f_last as "Faculty Last",
+    f.f_first as "Faculty First"
+FROM
+    term t,
+    course_section cs,
+    faculty f
+WHERE
+        t.term_id = cs.term_id
+    AND cs.f_id = f.f_id
+    AND c_sec_day LIKE 'M%'
+    AND t.term_desc IN (
+        SELECT
+            t2.term_desc
+        FROM
+            term t2, 
+            course_section cs2,
+            faculty f2
+        WHERE t.term_id = cs2.term_id
+              AND cs2.f_id = f2.f_id
+              AND f2.f_last = 'Blanchard'
+              AND f2.f_first = 'John');
+
+/* 5. Display the first and last names of all faculty members who have ever taught any of the same 
+courses (course_name) as faculty member Kim Cox or who have ever taught a class in the same 
+room as Kim.  Display names only once. */
+
+SELECT DISTINCT(f.f_first) as "Faculty First",
+       f.f_last as "Faculty Last"
+FROM faculty f, location l, course_section cs, course c
+WHERE f.f_id = cs.f_id
+AND l.loc_id = cs.loc_id
+AND c.course_id = cs.course_id
+AND (c.course_name IN (SELECT c2.course_name
+                       FROM faculty f2, course_section cs2, course c2
+                       WHERE f2.f_id = cs2.f_id
+                       and c2.course_id = cs2.course_id
+                       AND f2.f_last = 'Cox'
+                       AND f2.f_first = 'Kim')
+  OR (l.room IN (SELECT l2.room
+              FROM faculty f3, location l2, course_section cs3
+              WHERE f3.f_id = cs3.f_id
+              AND cs3.loc_id = l2.loc_id
+              AND f3.f_first = 'Kim'
+              AND f3.f_last = 'Cox')
+      )
+     );
